@@ -1,5 +1,6 @@
 FROM node:22-bookworm@sha256:cd7bcd2e7a1e6f72052feb023c7f6b722205d3fcab7bbcbd2d1bfdab10b1e935
 
+
 # Install Bun (required for build scripts)
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
@@ -50,6 +51,35 @@ RUN pnpm build
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:build
+
+
+
+# INSTALL brew for skills Install dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    file \
+    git \
+    sudo \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user (Homebrew requires this)
+RUN useradd -m -s /bin/bash brewuser && \
+    echo 'brewuser ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+USER brewuser
+WORKDIR /home/brewuser
+
+# Install Homebrew
+RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Add brew to PATH
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$PATH"
+
+# Verify install
+RUN brew --version
+
 
 # Expose the CLI binary without requiring npm global writes as non-root.
 USER root
